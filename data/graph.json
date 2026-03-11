@@ -1,0 +1,25 @@
+{
+  "nodes": [
+    { "id": 1, "label": "Alice", "group": "person", "title": "Person: Alice" },
+    { "id": 2, "label": "Bob", "group": "person", "title": "Person: Bob" },
+    { "id": 3, "label": "Carol", "group": "person", "title": "Person: Carol" },
+    { "id": 4, "label": "Dave", "group": "person", "title": "Person: Dave" },
+    { "id": 5, "label": "Eve", "group": "person", "title": "Person: Eve" },
+    { "id": 6, "label": "GraphDB", "group": "system", "title": "System: GraphDB" },
+    { "id": 7, "label": "WebApp", "group": "system", "title": "System: WebApp" },
+    { "id": 8, "label": "API", "group": "system", "title": "System: API" }
+  ],
+  "edges": [
+    { "id": 1, "from": 1, "to": 2, "label": "KNOWS", "arrows": "to" },
+    { "id": 2, "from": 1, "to": 3, "label": "KNOWS", "arrows": "to" },
+    { "id": 3, "from": 2, "to": 4, "label": "KNOWS", "arrows": "to" },
+    { "id": 4, "from": 3, "to": 4, "label": "KNOWS", "arrows": "to" },
+    { "id": 5, "from": 4, "to": 5, "label": "KNOWS", "arrows": "to" },
+    { "id": 6, "from": 1, "to": 5, "label": "KNOWS", "arrows": "to" },
+    { "id": 7, "from": 6, "to": 7, "label": "CONNECTS", "arrows": "to" },
+    { "id": 8, "from": 7, "to": 8, "label": "CALLS", "arrows": "to" },
+    { "id": 9, "from": 8, "to": 6, "label": "QUERIES", "arrows": "to" },
+    { "id": 10, "from": 1, "to": 6, "label": "USES", "arrows": "to" },
+    { "id": 11, "from": 2, "to": 6, "label": "USES", "arrows": "to" }
+  ]
+}

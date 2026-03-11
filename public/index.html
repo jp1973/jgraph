@@ -1,0 +1,513 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>jGraph – Graph Database Viewer</title>
+  <script src="https://unpkg.com/vis-network@9.1.9/standalone/umd/vis-network.min.js"></script>
+  <style>
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #0f1117;
+      color: #e2e8f0;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    header {
+      background: #1a1d2e;
+      border-bottom: 1px solid #2d3748;
+      padding: 16px 24px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    header h1 {
+      font-size: 1.4rem;
+      font-weight: 700;
+      color: #63b3ed;
+      letter-spacing: -0.5px;
+    }
+
+    header .subtitle {
+      font-size: 0.875rem;
+      color: #718096;
+    }
+
+    .badge {
+      background: #2d3748;
+      border: 1px solid #4a5568;
+      border-radius: 9999px;
+      padding: 2px 10px;
+      font-size: 0.75rem;
+      color: #a0aec0;
+    }
+
+    .layout {
+      flex: 1;
+      display: flex;
+      overflow: hidden;
+    }
+
+    /* Sidebar */
+    .sidebar {
+      width: 260px;
+      background: #1a1d2e;
+      border-right: 1px solid #2d3748;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .sidebar-section {
+      padding: 12px 16px 8px;
+      font-size: 0.7rem;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: #718096;
+      border-bottom: 1px solid #2d3748;
+    }
+
+    .list-container {
+      flex: 1;
+      overflow-y: auto;
+    }
+
+    .node-list, .edge-list {
+      list-style: none;
+    }
+
+    .node-list li, .edge-list li {
+      padding: 8px 16px;
+      border-bottom: 1px solid #1e2233;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.85rem;
+      transition: background 0.15s;
+    }
+
+    .node-list li:hover, .edge-list li:hover {
+      background: #252840;
+    }
+
+    .node-list li.active, .edge-list li.active {
+      background: #2d3460;
+    }
+
+    .dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    .dot.person { background: #63b3ed; }
+    .dot.system { background: #68d391; }
+
+    .edge-arrow {
+      font-size: 0.75rem;
+      color: #a0aec0;
+    }
+
+    /* Graph canvas */
+    .graph-area {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .toolbar {
+      background: #1a1d2e;
+      border-bottom: 1px solid #2d3748;
+      padding: 8px 16px;
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .btn {
+      background: #2d3748;
+      border: 1px solid #4a5568;
+      color: #e2e8f0;
+      padding: 5px 14px;
+      border-radius: 6px;
+      font-size: 0.8rem;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+
+    .btn:hover {
+      background: #3d4a60;
+    }
+
+    .stats {
+      margin-left: auto;
+      font-size: 0.8rem;
+      color: #718096;
+    }
+
+    .stats span {
+      color: #63b3ed;
+      font-weight: 600;
+    }
+
+    #graph-container {
+      flex: 1;
+      background: #0f1117;
+    }
+
+    /* Detail panel */
+    .detail-panel {
+      width: 240px;
+      background: #1a1d2e;
+      border-left: 1px solid #2d3748;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      overflow-y: auto;
+    }
+
+    .detail-panel h3 {
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: #63b3ed;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      border-bottom: 1px solid #2d3748;
+      padding-bottom: 8px;
+    }
+
+    .detail-row {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .detail-label {
+      font-size: 0.7rem;
+      color: #718096;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .detail-value {
+      font-size: 0.875rem;
+      color: #e2e8f0;
+    }
+
+    .empty-state {
+      color: #4a5568;
+      font-size: 0.85rem;
+      text-align: center;
+      margin-top: 20px;
+    }
+
+    /* Loading / error */
+    #loading {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(15, 17, 23, 0.9);
+      font-size: 1rem;
+      color: #63b3ed;
+      z-index: 10;
+    }
+
+    #error-banner {
+      display: none;
+      background: #742a2a;
+      border: 1px solid #c53030;
+      color: #fed7d7;
+      padding: 10px 16px;
+      font-size: 0.85rem;
+    }
+
+    /* Legend */
+    .legend {
+      display: flex;
+      gap: 16px;
+      align-items: center;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 0.75rem;
+      color: #a0aec0;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>jGraph</h1>
+    <span class="subtitle">Graph Database Viewer</span>
+    <span class="badge" id="status-badge">Loading…</span>
+  </header>
+
+  <div id="error-banner"></div>
+
+  <div class="layout">
+    <!-- Sidebar: nodes list -->
+    <aside class="sidebar">
+      <div class="sidebar-section">Nodes</div>
+      <div class="list-container" style="max-height:50%">
+        <ul class="node-list" id="node-list"></ul>
+      </div>
+      <div class="sidebar-section">Edges</div>
+      <div class="list-container">
+        <ul class="edge-list" id="edge-list"></ul>
+      </div>
+    </aside>
+
+    <!-- Main graph canvas -->
+    <main class="graph-area">
+      <div class="toolbar">
+        <button class="btn" id="btn-fit">Fit View</button>
+        <button class="btn" id="btn-reset">Reset Layout</button>
+        <div class="legend">
+          <span class="legend-item"><span class="dot person"></span> Person</span>
+          <span class="legend-item"><span class="dot system"></span> System</span>
+        </div>
+        <div class="stats">
+          Nodes: <span id="stat-nodes">0</span> &nbsp;|&nbsp; Edges: <span id="stat-edges">0</span>
+        </div>
+      </div>
+      <div id="graph-container" style="position:relative">
+        <div id="loading">Loading graph data…</div>
+      </div>
+    </main>
+
+    <!-- Detail panel -->
+    <aside class="detail-panel">
+      <h3>Details</h3>
+      <div id="detail-content">
+        <p class="empty-state">Click a node or edge to see details.</p>
+      </div>
+    </aside>
+  </div>
+
+  <script>
+    (function () {
+      'use strict';
+
+      const GROUP_COLORS = {
+        person: { background: '#2a4a7f', border: '#63b3ed', highlight: { background: '#3a5a9f', border: '#90cdf4' } },
+        system: { background: '#276749', border: '#68d391', highlight: { background: '#2f855a', border: '#9ae6b4' } },
+        default: { background: '#44475a', border: '#a0aec0', highlight: { background: '#5a5d78', border: '#cbd5e0' } }
+      };
+
+      let network = null;
+      let graphData = { nodes: [], edges: [] };
+
+      function showError(msg) {
+        const banner = document.getElementById('error-banner');
+        banner.textContent = 'Error: ' + msg;
+        banner.style.display = 'block';
+        document.getElementById('loading').style.display = 'none';
+      }
+
+      function buildNodeItem(node) {
+        const li = document.createElement('li');
+        li.dataset.id = node.id;
+        const dot = document.createElement('span');
+        dot.className = 'dot ' + (node.group || 'default');
+        li.appendChild(dot);
+        li.appendChild(document.createTextNode(node.label));
+        li.addEventListener('click', () => {
+          network.selectNodes([node.id]);
+          network.focus(node.id, { animation: true, scale: 1.2 });
+          showNodeDetail(node);
+          highlightListItem('node', node.id);
+        });
+        return li;
+      }
+
+      function buildEdgeItem(edge) {
+        const li = document.createElement('li');
+        li.dataset.id = edge.id;
+        li.innerHTML =
+          '<span class="edge-arrow">&#8594;</span> ' +
+          escapeHtml(String(edge.from)) + ' <em style="color:#718096">' + escapeHtml(edge.label || '') + '</em> ' + escapeHtml(String(edge.to));
+        li.addEventListener('click', () => {
+          network.selectEdges([edge.id]);
+          showEdgeDetail(edge);
+          highlightListItem('edge', edge.id);
+        });
+        return li;
+      }
+
+      function escapeHtml(str) {
+        return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+      }
+
+      function highlightListItem(type, id) {
+        const listId = type === 'node' ? 'node-list' : 'edge-list';
+        document.querySelectorAll('#' + listId + ' li').forEach(li => li.classList.remove('active'));
+        const target = document.querySelector('#' + listId + ' li[data-id="' + id + '"]');
+        if (target) {
+          target.classList.add('active');
+          target.scrollIntoView({ block: 'nearest' });
+        }
+      }
+
+      function showNodeDetail(node) {
+        const el = document.getElementById('detail-content');
+        el.innerHTML = [
+          detailRow('Type', 'Node'),
+          detailRow('ID', node.id),
+          detailRow('Label', node.label),
+          detailRow('Group', node.group || '—'),
+          detailRow('Description', node.title || '—')
+        ].join('');
+      }
+
+      function showEdgeDetail(edge) {
+        const fromNode = graphData.nodes.find(n => n.id === edge.from);
+        const toNode = graphData.nodes.find(n => n.id === edge.to);
+        const el = document.getElementById('detail-content');
+        el.innerHTML = [
+          detailRow('Type', 'Edge'),
+          detailRow('ID', edge.id),
+          detailRow('Relationship', edge.label || '—'),
+          detailRow('From', fromNode ? fromNode.label : edge.from),
+          detailRow('To', toNode ? toNode.label : edge.to)
+        ].join('');
+      }
+
+      function detailRow(label, value) {
+        return '<div class="detail-row"><span class="detail-label">' +
+          escapeHtml(String(label)) + '</span><span class="detail-value">' +
+          escapeHtml(String(value)) + '</span></div>';
+      }
+
+      function buildNetwork(data) {
+        const visNodes = data.nodes.map(n => ({
+          id: n.id,
+          label: n.label,
+          title: n.title || n.label,
+          color: GROUP_COLORS[n.group] || GROUP_COLORS.default,
+          font: { color: '#e2e8f0', size: 13 },
+          shape: n.group === 'system' ? 'box' : 'ellipse',
+          borderWidth: 2
+        }));
+
+        const visEdges = data.edges.map(e => ({
+          id: e.id,
+          from: e.from,
+          to: e.to,
+          label: e.label || '',
+          arrows: e.arrows || 'to',
+          color: { color: '#4a5568', highlight: '#90cdf4', inherit: false },
+          font: { color: '#a0aec0', size: 11, align: 'middle' },
+          smooth: { type: 'continuous' }
+        }));
+
+        const container = document.getElementById('graph-container');
+        const options = {
+          layout: { improvedLayout: true },
+          physics: {
+            enabled: true,
+            solver: 'forceAtlas2Based',
+            forceAtlas2Based: { gravitationalConstant: -50, centralGravity: 0.01, springLength: 120 },
+            stabilization: { iterations: 150 }
+          },
+          interaction: {
+            hover: true,
+            tooltipDelay: 200,
+            navigationButtons: false,
+            keyboard: true
+          }
+        };
+
+        network = new vis.Network(
+          container,
+          { nodes: new vis.DataSet(visNodes), edges: new vis.DataSet(visEdges) },
+          options
+        );
+
+        network.on('stabilizationIterationsDone', () => {
+          document.getElementById('loading').style.display = 'none';
+          network.setOptions({ physics: { enabled: false } });
+        });
+
+        network.on('selectNode', params => {
+          if (params.nodes.length) {
+            const node = data.nodes.find(n => n.id === params.nodes[0]);
+            if (node) { showNodeDetail(node); highlightListItem('node', node.id); }
+          }
+        });
+
+        network.on('selectEdge', params => {
+          if (params.edges.length && !params.nodes.length) {
+            const edge = data.edges.find(e => e.id === params.edges[0]);
+            if (edge) { showEdgeDetail(edge); highlightListItem('edge', edge.id); }
+          }
+        });
+
+        network.on('deselectNode', () => {
+          document.getElementById('detail-content').innerHTML =
+            '<p class="empty-state">Click a node or edge to see details.</p>';
+        });
+      }
+
+      function render(data) {
+        graphData = data;
+
+        // Stats
+        document.getElementById('stat-nodes').textContent = data.nodes.length;
+        document.getElementById('stat-edges').textContent = data.edges.length;
+        document.getElementById('status-badge').textContent =
+          data.nodes.length + ' nodes · ' + data.edges.length + ' edges';
+
+        // Node list
+        const nodeList = document.getElementById('node-list');
+        data.nodes.forEach(n => nodeList.appendChild(buildNodeItem(n)));
+
+        // Edge list
+        const edgeList = document.getElementById('edge-list');
+        data.edges.forEach(e => edgeList.appendChild(buildEdgeItem(e)));
+
+        // Network
+        buildNetwork(data);
+      }
+
+      // Toolbar buttons
+      document.getElementById('btn-fit').addEventListener('click', () => {
+        if (network) network.fit({ animation: true });
+      });
+
+      document.getElementById('btn-reset').addEventListener('click', () => {
+        if (network) {
+          network.setOptions({ physics: { enabled: true } });
+          setTimeout(() => network.setOptions({ physics: { enabled: false } }), 2000);
+        }
+      });
+
+      // Fetch data from API
+      fetch('/api/graph')
+        .then(res => {
+          if (!res.ok) throw new Error('HTTP ' + res.status);
+          return res.json();
+        })
+        .then(data => render(data))
+        .catch(err => showError(err.message));
+    })();
+  </script>
+</body>
+</html>
